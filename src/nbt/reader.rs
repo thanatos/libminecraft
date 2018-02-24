@@ -106,7 +106,7 @@ fn test_read_unsigned() {
 fn read_n_bytes_to_vector<R: ?Sized + Read>(reader: &mut R, length: usize)
         -> Result<Vec<u8>, NbtReadError> {
     let mut bytes = Vec::<u8>::with_capacity(length);
-    unsafe { bytes.set_len(length); }
+    bytes.resize(length, 0);
     reader.read_exact(&mut bytes[..])?;
     Ok(bytes)
 }
