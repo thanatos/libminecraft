@@ -35,7 +35,7 @@ pub enum NbtReadError {
 
 
 fn tag_constant_to_name(tag_type: u8) -> String {
-    String::from_str(match tag_type {
+    String::from(match tag_type {
         TAG_END => "TAG_End",
         TAG_BYTE => "TAG_Byte",
         TAG_SHORT => "TAG_Short",
@@ -55,16 +55,6 @@ fn tag_constant_to_name(tag_type: u8) -> String {
 
 extern crate byteorder;
 use self::byteorder::ReadBytesExt;
-
-
-impl From<byteorder::Error> for NbtReadError {
-    fn from(err: byteorder::Error) -> NbtReadError {
-        match err {
-            byteorder::Error::UnexpectedEOF => NbtReadError::UnexpectedEof,
-            byteorder::Error::Io(e) => NbtReadError::IoError(e),
-        }
-    }
-}
 
 
 impl From<io::Error> for NbtReadError {

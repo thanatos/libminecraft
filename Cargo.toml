@@ -7,6 +7,5 @@ authors = ["Roy Wellington Ⅳ <cactus_hugged@yahoo.com>"]
 name = "minecraft"
 path = "src/lib.rs"
 
-
 [dependencies]
-byteorder = "*"
+byteorder = "^1.2.1"
