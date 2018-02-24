@@ -1,3 +1,5 @@
+extern crate byteorder;
+
 use std::convert::From;
 use std::io;
 use std::io::Read;
@@ -5,6 +7,7 @@ use std::mem;
 use std::string;
 use std::vec::Vec;
 
+use self::byteorder::ReadBytesExt;
 
 use super::{
     TAG_END,
@@ -20,7 +23,6 @@ use super::{
     TAG_COMPOUND,
     TAG_INT_ARRAY,
 };
-
 use super::{Value, RootValue, Compound, List};
 
 
@@ -50,10 +52,6 @@ fn tag_constant_to_name(tag_type: u8) -> String {
         _ => return format!("(unknown tag type 0x{:02x})", tag_type),
     })
 }
-
-
-extern crate byteorder;
-use self::byteorder::ReadBytesExt;
 
 
 impl From<io::Error> for NbtReadError {
