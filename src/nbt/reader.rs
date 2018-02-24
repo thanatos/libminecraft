@@ -26,7 +26,6 @@ use super::{Value, RootValue, Compound, List};
 
 #[derive(Debug)]
 pub enum NbtReadError {
-    UnexpectedEof,
     UnknownTagType(u8),
     InvalidTagType,
     IoError(io::Error),
@@ -88,10 +87,10 @@ fn test_read_signed() {
     assert!(-1 == read_number!(cursor, read_i16).unwrap());
     match read_number!(cursor, read_i16) {
         Ok(_) => panic!("Should have hit EOF, but didn't!"),
-        Err(err) => match err {
-            NbtReadError::UnexpectedEof => (),
-            _ => panic!("Got unexpected error: {:?}", err),
-        },
+        Err(NbtReadError::IoError(err)) => {
+            assert!(err.kind() == io::ErrorKind::UnexpectedEof);
+        }
+        Err(err) => panic!("Got unexpected error: {:?}", err),
     };
 }
 
@@ -108,12 +107,8 @@ fn read_n_bytes_to_vector<R: ?Sized + Read>(reader: &mut R, length: usize)
         -> Result<Vec<u8>, NbtReadError> {
     let mut bytes = Vec::<u8>::with_capacity(length);
     unsafe { bytes.set_len(length); }
-    let bytes_read = reader.read(&mut bytes[..])?;
-    if bytes_read != length {
-        Err(NbtReadError::UnexpectedEof)
-    } else {
-        Ok(bytes)
-    }
+    reader.read_exact(&mut bytes[..])?;
+    Ok(bytes)
 }
 
 
