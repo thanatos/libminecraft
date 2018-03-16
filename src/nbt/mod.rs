@@ -49,9 +49,9 @@ pub type Compound = HashMap<String, Value>;
 
 #[derive(Debug)]
 pub enum List {
-    // Sometimes, TAG_Lists of size zero have an interal element type of
+    // Sometimes, TAG_Lists of size zero have an internal element type of
     // TAG_End. I.e., the list is a list of "TAG_End"s, but that makes no
-    // sense. They're only consider valid at size zero, so there's no
+    // sense. They're only considered valid at size zero, so there's no
     // associated vector.
     Empty,
     Byte(Vec<i8>),
