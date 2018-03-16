@@ -127,7 +127,7 @@ fn is_simple_value(tag_type: u8) -> Result<bool, UnknownTagType> {
         TAG_STRING => true,
         TAG_LIST => false,
         TAG_COMPOUND => false,
-        TAG_INT_ARRAY => false,
+        TAG_INT_ARRAY => true,
         _ => {
             return Err(UnknownTagType {
                 tag_type: tag_type,
