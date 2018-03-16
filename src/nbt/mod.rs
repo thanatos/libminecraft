@@ -38,6 +38,7 @@ pub enum Value {
 
 /// The root value in NBT files has a name associated with it. It is almost
 /// always the empty string.
+#[derive(Debug)]
 pub struct RootValue {
     pub name: String,
     pub value: Value,
