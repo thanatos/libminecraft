@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 
-mod reader;
+pub mod reader;
 #[cfg(test)]
 mod tests;
 
