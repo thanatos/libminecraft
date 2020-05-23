@@ -137,7 +137,7 @@ fn is_simple_value(tag_type: u8) -> Result<bool, UnknownTagType> {
 }
 
 
-fn read_nbt_string(reader: &mut Read) -> Result<String, NbtReadError> {
+fn read_nbt_string(reader: &mut dyn Read) -> Result<String, NbtReadError> {
     // XXX: The NBT standard say "TAG_Short" for a length, which would imply
     // this length is signed. Which makes no sense.
     let length = read_number!(reader, read_u16)? as usize;
@@ -146,7 +146,7 @@ fn read_nbt_string(reader: &mut Read) -> Result<String, NbtReadError> {
 }
 
 
-fn read_nbt_byte_array(reader: &mut Read) -> Result<Vec<u8>, NbtReadError> {
+fn read_nbt_byte_array(reader: &mut dyn Read) -> Result<Vec<u8>, NbtReadError> {
     // XXX: The NBT standard say "TAG_Int" for a length, which would imply
     // this length is signed.  Which makes no sense.
     let length = read_number!(reader, read_u32)? as usize;
@@ -154,7 +154,7 @@ fn read_nbt_byte_array(reader: &mut Read) -> Result<Vec<u8>, NbtReadError> {
 }
 
 
-fn read_nbt_int_array(reader: &mut Read) -> Result<Vec<i32>, NbtReadError> {
+fn read_nbt_int_array(reader: &mut dyn Read) -> Result<Vec<i32>, NbtReadError> {
     // XXX: The NBT standard say "TAG_Int" for a length, which would imply
     // this length is signed.  Which makes no sense.
     let length = read_number!(reader, read_u32)? as usize;
@@ -166,7 +166,7 @@ fn read_nbt_int_array(reader: &mut Read) -> Result<Vec<i32>, NbtReadError> {
 }
 
 
-fn read_simple_value(tag_type: u8, reader: &mut Read)
+fn read_simple_value(tag_type: u8, reader: &mut dyn Read)
         -> Result<Value, NbtReadError> {
     Ok(match tag_type {
         TAG_BYTE => Value::Byte(reader.read_i8()?),
@@ -188,14 +188,13 @@ fn read_simple_value(tag_type: u8, reader: &mut Read)
 
 enum ComplexReadResult {
     NotFinished,
-    DescendInto(Box<ReadingComplex>),
+    DescendInto(Box<dyn ReadingComplex>),
     Done,
 }
 
 
 trait ReadingComplex {
-    fn continue_read(&mut self, reader: &mut Read)
-        -> Result<ComplexReadResult, NbtReadError>;
+    fn continue_read(&mut self, reader: &mut dyn Read) -> Result<ComplexReadResult, NbtReadError>;
     fn descended_read_complete(&mut self, value: Value);
     fn final_value(self: Box<Self>) -> Value;
 }
@@ -203,7 +202,7 @@ trait ReadingComplex {
 
 enum ReadStart {
     Simple(Value),
-    Complex(Box<ReadingComplex>),
+    Complex(Box<dyn ReadingComplex>),
 }
 
 
@@ -229,7 +228,7 @@ macro_rules! read_simple_list {
 }
 
 
-fn start_list_read(reader: &mut Read) -> Result<ListStart, NbtReadError> {
+fn start_list_read(reader: &mut dyn Read) -> Result<ListStart, NbtReadError> {
     let inner_tag_type = reader.read_u8()?;
     // XXX: The NBT standard say "TAG_Int" for a length, which would imply
     // this length is signed. Which makes no sense.
@@ -242,16 +241,11 @@ fn start_list_read(reader: &mut Read) -> Result<ListStart, NbtReadError> {
     Ok(ListStart::Simple(match inner_tag_type {
         TAG_END => return Err(NbtReadError::InvalidTagType),
         TAG_BYTE => read_simple_list!(Byte, i8, number, { reader.read_i8() }),
-        TAG_SHORT =>
-            read_simple_list!(Short, i16, number, { read_number!(reader, read_i16) }),
-        TAG_INT =>
-            read_simple_list!(Int, i32, number, { read_number!(reader, read_i32) }),
-        TAG_LONG =>
-            read_simple_list!(Long, i64, number, { read_number!(reader, read_i64) }),
-        TAG_FLOAT =>
-            read_simple_list!(Float, f32, number, { read_number!(reader, read_f32) }),
-        TAG_DOUBLE =>
-            read_simple_list!(Double, f64, number, { read_number!(reader, read_f64) }),
+        TAG_SHORT => read_simple_list!(Short, i16, number, { read_number!(reader, read_i16) }),
+        TAG_INT => read_simple_list!(Int, i32, number, { read_number!(reader, read_i32) }),
+        TAG_LONG => read_simple_list!(Long, i64, number, { read_number!(reader, read_i64) }),
+        TAG_FLOAT => read_simple_list!(Float, f32, number, { read_number!(reader, read_f32) }),
+        TAG_DOUBLE => read_simple_list!(Double, f64, number, { read_number!(reader, read_f64) }),
         TAG_BYTE_ARRAY => read_simple_list!(
             ByteArray, Vec<u8>, number, { read_nbt_byte_array(reader) }
         ),
@@ -278,7 +272,7 @@ fn start_list_read(reader: &mut Read) -> Result<ListStart, NbtReadError> {
  * Start reading a tag's value, where the value might be simple (TAG_INT) or complex
  * (TAG_COMPOUND).
  */
-fn start_potentially_complex_read(tag_type: u8, reader: &mut Read)
+fn start_potentially_complex_read(tag_type: u8, reader: &mut dyn Read)
         -> Result<ReadStart, NbtReadError> {
     let is_simple_tag = match is_simple_value(tag_type) {
         Ok(is_it) => is_it,
@@ -292,12 +286,9 @@ fn start_potentially_complex_read(tag_type: u8, reader: &mut Read)
     match tag_type {
         TAG_LIST => return Ok(
             match start_list_read(reader)? {
-                ListStart::Simple(list) =>
-                    ReadStart::Simple(Value::List(list)),
-                ListStart::ListOfList(reading) =>
-                    ReadStart::Complex(Box::new(reading)),
-                ListStart::ListOfCompound(reading) =>
-                    ReadStart::Complex(Box::new(reading)),
+                ListStart::Simple(list) => ReadStart::Simple(Value::List(list)),
+                ListStart::ListOfList(reading) => ReadStart::Complex(Box::new(reading)),
+                ListStart::ListOfCompound(reading) => ReadStart::Complex(Box::new(reading)),
             }
         ),
         TAG_COMPOUND => {
@@ -321,7 +312,7 @@ struct ReadingCompound {
 
 
 impl ReadingComplex for ReadingCompound {
-    fn continue_read(&mut self, reader: &mut Read)
+    fn continue_read(&mut self, reader: &mut dyn Read)
             -> Result<ComplexReadResult, NbtReadError> {
         loop {
             let tag_type = reader.read_u8()?;
@@ -365,7 +356,7 @@ struct ReadingListOfList {
 
 
 impl ReadingComplex for ReadingListOfList {
-    fn continue_read(&mut self, reader: &mut Read)
+    fn continue_read(&mut self, reader: &mut dyn Read)
             -> Result<ComplexReadResult, NbtReadError> {
         if self.items_remaining == 0 {
             return Ok(ComplexReadResult::Done);
@@ -417,7 +408,7 @@ struct ReadingListOfCompound {
 
 
 impl ReadingComplex for ReadingListOfCompound {
-    fn continue_read(&mut self, reader: &mut Read)
+    fn continue_read(&mut self, reader: &mut dyn Read)
             -> Result<ComplexReadResult, NbtReadError> {
         if self.items_remaining == 0 {
             return Ok(ComplexReadResult::Done);
@@ -458,7 +449,7 @@ impl ReadingComplex for ReadingListOfCompound {
 }
 
 
-pub fn parse_nbt_stream(reader: &mut Read) -> Result<RootValue, NbtReadError> {
+pub fn parse_nbt_stream(reader: &mut dyn Read) -> Result<RootValue, NbtReadError> {
     let root_tag_type = reader.read_u8()?;
     let root_tag_name = read_nbt_string(reader)?;
 
@@ -470,7 +461,7 @@ pub fn parse_nbt_stream(reader: &mut Read) -> Result<RootValue, NbtReadError> {
         }),
         ReadStart::Complex(reading_) => reading_,
     };
-    let mut in_progress_reads = Vec::<Box<ReadingComplex>>::new();
+    let mut in_progress_reads = Vec::<Box<dyn ReadingComplex>>::new();
     in_progress_reads.push(reading);
 
     loop {
